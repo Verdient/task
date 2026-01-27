@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Verdient\Task\ProcessDriver;
 
-use Hyperf\HttpServer\Router\Handler;
 use Verdient\Task\Process\HandlerInterface;
 use Verdient\Task\Socket;
 

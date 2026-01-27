@@ -87,7 +87,7 @@ class WorkersDispatcher extends AbstractDispatcher
      *
      * @author Verdient。
      */
-    protected ProcessDriverInterface $processDriver;
+    protected ?ProcessDriverInterface $processDriver = null;
 
     /**
      * CPU数量
