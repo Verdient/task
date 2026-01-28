@@ -11,6 +11,7 @@ use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Swoole\Coroutine;
+use Swoole\Process;
 use Swoole\Runtime;
 use Verdient\Logger\Logger;
 use Verdient\Logger\StdoutLogger;
@@ -272,6 +273,13 @@ abstract class AbstractDispatcher implements DispatcherInterface
     {
         pcntl_signal(SIGINT, fn() => $this->shouldExit = true);
         pcntl_signal(SIGTERM, fn() => $this->shouldExit = true);
+        pcntl_signal(SIGCHLD, function () {
+            if (class_exists(Process::class)) {
+                Process::wait();
+            } else {
+                pcntl_wait($status);
+            }
+        });
         pcntl_async_signals(true);
     }
 
