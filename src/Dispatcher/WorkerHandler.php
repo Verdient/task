@@ -7,6 +7,7 @@ namespace Verdient\Task\Dispatcher;
 use Override;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Psr\Log\LoggerInterface;
+use Swoole\Event;
 use Verdient\Task\Event\BeforeConsume;
 use Verdient\Task\Event\Consumed;
 use Verdient\Task\Event\FailedToConsume;
@@ -50,6 +51,27 @@ class WorkerHandler implements HandlerInterface
      */
     #[Override]
     public function handle(ChildrenProcess $process): void
+    {
+        if ($this->enableCoroutine) {
+            run(function () use ($process) {
+                $this->handleInternal($process);
+                Event::exit();
+                $process->signal(SIGTERM, SIG_DFL);
+                $process->kill(SIGTERM);
+            });
+        } else {
+            $this->handleInternal($process);
+        }
+    }
+
+    /**
+     * 工作进程处理程序
+     *
+     * @param ChildrenProcess $process 工作进程
+     *
+     * @author Verdient。
+     */
+    protected function handleInternal(ChildrenProcess $process): void
     {
         $this->onWorkerStarted($process);
 
@@ -103,10 +125,6 @@ class WorkerHandler implements HandlerInterface
                     $payload->logger()->error($e);
                 }
             };
-        }
-
-        if ($this->enableCoroutine) {
-            $consume = fn(Payload $payload) => run($consume, $payload);
         }
 
         while (true) {
@@ -174,11 +192,7 @@ class WorkerHandler implements HandlerInterface
     protected function onWorkerStarted(ChildrenProcess $process): void
     {
         if ($this->eventDispatcher) {
-            if ($this->enableCoroutine) {
-                run(fn() => $this->dispatchEvent(new WorkerStarted($this->task, $process)));
-            } else {
-                $this->dispatchEvent(new WorkerStarted($this->task, $process));
-            }
+            $this->dispatchEvent(new WorkerStarted($this->task, $process));
         }
     }
 
@@ -192,11 +206,7 @@ class WorkerHandler implements HandlerInterface
     protected function onWorkerStopped(ChildrenProcess $process): void
     {
         if ($this->eventDispatcher) {
-            if ($this->enableCoroutine) {
-                run(fn() => $this->dispatchEvent(new WorkerStopped($this->task, $process)));
-            } else {
-                $this->dispatchEvent(new WorkerStopped($this->task, $process));
-            }
+            $this->dispatchEvent(new WorkerStopped($this->task, $process));
         }
     }
 }
