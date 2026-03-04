@@ -601,6 +601,7 @@ class WorkersDispatcher extends AbstractDispatcher
 
             if ($this->shouldExit()) {
                 $this->onStop();
+                error_reporting(E_ALL & ~E_NOTICE);
                 break;
             }
 

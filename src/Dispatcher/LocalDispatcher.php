@@ -32,6 +32,7 @@ class LocalDispatcher extends AbstractDispatcher
 
             if ($this->shouldExit()) {
                 $this->onStop();
+                error_reporting(E_ALL & ~E_NOTICE);
                 return;
             }
 
