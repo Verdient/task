@@ -33,6 +33,8 @@ class LocalDispatcher extends AbstractDispatcher
             if ($this->shouldExit()) {
                 $this->onStop();
                 error_reporting(E_ALL & ~E_NOTICE);
+                pcntl_signal(SIGTERM, SIG_DFL);
+                posix_kill(getmypid(), SIGTERM);
                 return;
             }
 
