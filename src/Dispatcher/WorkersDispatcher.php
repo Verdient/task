@@ -334,15 +334,7 @@ class WorkersDispatcher extends AbstractDispatcher
             }
         }
 
-        $reservedMemory = 512000;
-
-        if ($memoryAvailable < $reservedMemory) {
-            return 0;
-        }
-
-        $usableMemory = $memoryAvailable - $reservedMemory;
-
-        return (int) floor($usableMemory * 1024 / $peakMemoryUsage);
+        return (int) floor($memoryAvailable * 1024 / $peakMemoryUsage);
     }
 
     /**
@@ -590,10 +582,7 @@ class WorkersDispatcher extends AbstractDispatcher
     {
         $this->registerSignal();
 
-        $nextProducibleAt = microtime(true);
-
-        $maxSleepMicroseconds = 100000;
-        $maxSleepSeconds = $maxSleepMicroseconds / 1000000;
+        $nextProducibleAt = 0;
 
         $this->onStart();
 
@@ -626,30 +615,29 @@ class WorkersDispatcher extends AbstractDispatcher
                 $this->remove($worker);
             }
 
-            $now = microtime(true);
+            $isPushed = false;
 
-            if ($now >= $nextProducibleAt && $this->pushable()) {
-                $data = $this->produce();
-                if ($data === null) {
-                    $idleGap = $this->idleGap();
-                    $nextProducibleAt = microtime(true) + max(0, (float) $idleGap);
-                } else {
-                    $this->push(new Packet($data));
-                    $nextProducibleAt = microtime(true);
+            if (microtime(true) >= $nextProducibleAt) {
+                if ($this->pushable()) {
+                    $data = $this->produce();
+                    if ($data === null) {
+                        $idleGap = $this->idleGap();
+                        $nextProducibleAt = microtime(true) + max(0, (float) $idleGap);
+                    } else {
+                        $this->push(new Packet($data));
+                        $nextProducibleAt = 0;
+                        $isPushed = true;
+                    }
                 }
             }
 
-            $now = microtime(true);
-
-            $nextWakeUpAt = min(
-                $nextProducibleAt,
-                $now + $maxSleepSeconds
-            );
-
-            $sleepSeconds = $nextWakeUpAt - $now;
-
-            if ($sleepSeconds > 0) {
-                usleep((int) ($sleepSeconds * 1000000));
+            if (!$isPushed) {
+                $sleepSeconds = $nextProducibleAt - microtime(true);
+                if ($sleepSeconds > 0) {
+                    usleep((int) ($sleepSeconds * 1000000));
+                } else {
+                    usleep((int) (100000));
+                }
             }
         }
     }
